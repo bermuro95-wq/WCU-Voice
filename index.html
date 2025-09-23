@@ -798,20 +798,37 @@
 
     <!-- Firebase Configuration and App Logic -->
     <script>
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "your-api-key",
-            authDomain: "wcuvoice.firebaseapp.com",
-            projectId: "wcuvoice",
-            storageBucket: "wcuvoice.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "your-app-id"
-        };
+        
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+
+
+
+
+
+
+// Firebase configuration - USE YOUR REAL VALUES FROM FIREBASE CONSOLE
+const firebaseConfig = {
+    apiKey: "AIzaSyABC123YourRealAPIKeyHere",
+    authDomain: "wcuvoice-abc123.firebaseapp.com",
+    projectId: "wcuvoice-abc123",
+    storageBucket: "wcuvoice-abc123.appspot.com",
+    messagingSenderId: "123456789012",
+    appId: "1:123456789012:web:abc123def456"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+
+
+
+
+
+
+
+
 
         // Departments data
         const departments = [
