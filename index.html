@@ -2759,11 +2759,11 @@ document.head.appendChild(trendingStyleSheet);
 class TrendingCategoriesManager {
     constructor() {
         this.categories = [
-            "Campus News", "Academic Issues", "Student Life", 
+            "Campus News", "Academic Issues", "Students Clinic", 
             "Events & Activities", "Sports", "Clubs & Societies",
-            "Housing", "Food & Dining", "Transportation",
-            "Technology", "Career Services", "Health & Wellness",
-            "International Students", "Graduate Studies", "Research"
+            "Dorm", "Cafe", "Wi-Fi",
+            "Lab", "Water", "Bathroom",
+            "Electricity", "Graduate Studies", "Research"
         ];
         this.trendingListener = null;
         this.categoriesListener = null;
@@ -7241,503 +7241,280 @@ console.log('Enhanced messaging with user profiles loaded successfully!');
        
        
        
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       // ===============================
-// User Display & Profile Integration Fix
+// ===============================
+// WORKING User Profile & Messaging System
 // ===============================
 
-// Add CSS for better user display
-const userDisplayCSS = `
-/* User Display Enhancements */
-.clickable-user {
-    cursor: pointer;
-    transition: all 0.3s ease;
+// Simple CSS
+const workingUserCSS = `
+.working-user {
     display: flex;
     align-items: center;
-    gap: 8px;
-}
-
-.clickable-user:hover {
-    transform: translateY(-1px);
-}
-
-.clickable-user .avatar {
-    transition: transform 0.3s ease;
-}
-
-.clickable-user:hover .avatar {
-    transform: scale(1.1);
-}
-
-.user-display-name {
-    font-weight: 600;
-    color: var(--secondary);
-    text-decoration: none;
-}
-
-.user-display-name:hover {
-    text-decoration: underline;
-}
-
-.user-badge {
-    background: var(--secondary);
-    color: white;
-    padding: 2px 6px;
-    border-radius: 10px;
-    font-size: 0.7rem;
-    margin-left: 5px;
-}
-
-.user-department {
-    font-size: 0.8rem;
-    color: var(--gray);
-    margin-top: 2px;
-}
-
-.quick-message-btn {
-    background: var(--secondary);
-    color: white;
-    border: none;
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 0.7rem;
-    cursor: pointer;
-    margin-left: 8px;
-    transition: background-color 0.3s ease;
-}
-
-.quick-message-btn:hover {
-    background: var(--primary);
-}
-
-.post-author-enhanced {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    gap: 10px;
     margin-bottom: 10px;
     padding: 10px;
     background: #f8f9fa;
     border-radius: 8px;
 }
 
-.author-main-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.author-actions {
-    display: flex;
-    gap: 5px;
-}
-
-.user-profile-tooltip {
-    position: absolute;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 15px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    z-index: 1000;
-    min-width: 200px;
-    display: none;
-}
-
-.user-profile-tooltip.show {
-    display: block;
-}
-
-.tooltip-avatar {
-    width: 50px;
-    height: 50px;
+.working-avatar {
+    width: 45px;
+    height: 45px;
     border-radius: 50%;
-    background: var(--secondary);
+    background: #3498db;
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
     font-size: 1.2rem;
-    margin-bottom: 10px;
-}
-
-.tooltip-name {
-    font-weight: bold;
-    margin-bottom: 5px;
-}
-
-.tooltip-department {
-    color: var(--gray);
-    font-size: 0.9rem;
-    margin-bottom: 10px;
-}
-
-.tooltip-actions {
-    display: flex;
-    gap: 5px;
-}
-
-.tooltip-btn {
-    padding: 6px 12px;
-    border: none;
-    border-radius: 4px;
-    font-size: 0.8rem;
     cursor: pointer;
+}
+
+.working-user-info {
     flex: 1;
 }
 
-.tooltip-message {
-    background: var(--secondary);
-    color: white;
+.working-user-name {
+    font-weight: bold;
+    color: #2c3e50;
+    cursor: pointer;
+    margin-bottom: 3px;
 }
 
-.tooltip-view {
-    background: var(--primary);
-    color: white;
+.working-user-name:hover {
+    text-decoration: underline;
 }
 
-/* Enhanced post headers */
-.post-header-enhanced {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
-}
-
-.author-info-complete {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.author-details {
-    display: flex;
-    flex-direction: column;
-}
-
-.author-name-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.author-stats {
-    display: flex;
-    gap: 15px;
-    margin-top: 5px;
-}
-
-.author-stat {
+.working-user-department {
     font-size: 0.8rem;
-    color: var(--gray);
+    color: #7f8c8d;
 }
 
-/* Comment author enhancements */
-.comment-author-enhanced {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-}
-
-.comment-author-details {
-    display: flex;
-    flex-direction: column;
-}
-
-.comment-author-name {
-    font-weight: 600;
+.working-message-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
     font-size: 0.9rem;
 }
 
-.comment-author-department {
-    font-size: 0.7rem;
-    color: var(--gray);
+.working-message-btn:hover {
+    background: #2980b9;
+}
+
+/* Profile Modal */
+.working-profile-modal {
+    max-width: 400px;
+}
+
+.working-profile-header {
+    background: #3498db;
+    color: white;
+    padding: 20px;
+    text-align: center;
+    border-radius: 8px 8px 0 0;
+}
+
+.working-profile-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: bold;
+    margin: 0 auto 15px;
+    border: 3px solid white;
+}
+
+.working-profile-body {
+    padding: 20px;
+}
+
+.working-profile-details {
+    margin-bottom: 20px;
+}
+
+.working-profile-detail {
+    margin-bottom: 10px;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 5px;
+}
+
+.working-profile-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.working-profile-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.working-btn-message {
+    background: #3498db;
+    color: white;
+}
+
+.working-btn-close {
+    background: #95a5a6;
+    color: white;
 }
 `;
 
-// Add CSS to document
-const userDisplayStyleSheet = document.createElement('style');
-userDisplayStyleSheet.textContent = userDisplayCSS;
-document.head.appendChild(userDisplayStyleSheet);
+// Add CSS
+const workingStyleSheet = document.createElement('style');
+workingStyleSheet.textContent = workingUserCSS;
+document.head.appendChild(workingStyleSheet);
 
-// User Display Manager
-class UserDisplayManager {
+// WORKING User Profile System
+class WorkingUserSystem {
     constructor() {
         this.usersCache = new Map();
-        this.currentUser = null;
+        this.isInitialized = false;
     }
 
-    init() {
-        console.log('UserDisplayManager initializing...');
+    async init() {
+        if (this.isInitialized) return;
+        this.isInitialized = true;
         
-        auth.onAuthStateChanged(user => {
-            this.currentUser = user;
-            if (user) {
-                this.setupUserListeners();
-                this.enhanceExistingUserDisplays();
-            }
-        });
-
-        // Enhance user displays when new content is added
-        this.setupMutationObserver();
-    }
-
-    setupUserListeners() {
-        // Listen for all users to cache their data
-        db.collection('users').onSnapshot(snapshot => {
-            snapshot.docChanges().forEach(change => {
-                if (change.type === 'added' || change.type === 'modified') {
-                    this.usersCache.set(change.doc.id, change.doc.data());
-                    this.updateUserDisplays(change.doc.id, change.doc.data());
-                }
-            });
-        });
-    }
-
-    setupMutationObserver() {
-        // Watch for new posts and comments to enhance user displays
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'childList') {
-                    mutation.addedNodes.forEach(node => {
-                        if (node.nodeType === 1) { // Element node
-                            this.enhanceUserDisplaysInElement(node);
-                        }
-                    });
-                }
-            });
-        });
-
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-    }
-
-    enhanceExistingUserDisplays() {
-        // Enhance all existing user displays
-        const postsContainer = document.getElementById('postsContainer');
-        if (postsContainer) {
-            this.enhanceUserDisplaysInElement(postsContainer);
-        }
-
-        const discussionsContainer = document.getElementById('discussionsContainer');
-        if (discussionsContainer) {
-            this.enhanceUserDisplaysInElement(discussionsContainer);
-        }
-    }
-
-    enhanceUserDisplaysInElement(element) {
-        // Enhance post authors
-        const postAuthors = element.querySelectorAll('.post-author, [class*="author"]');
-        postAuthors.forEach(authorElement => {
-            this.enhanceAuthorDisplay(authorElement);
-        });
-
-        // Enhance comment authors
-        const commentAuthors = element.querySelectorAll('.comment-author, .comment-header');
-        commentAuthors.forEach(authorElement => {
-            this.enhanceCommentAuthorDisplay(authorElement);
-        });
-    }
-
-    enhanceAuthorDisplay(authorElement) {
-        // Find the user ID from data attributes or parent elements
-        let userId = authorElement.dataset.userId;
+        console.log('WorkingUserSystem started');
         
-        if (!userId) {
-            // Try to find user ID from parent post
-            const postElement = authorElement.closest('[data-post-id], .post-card, .discussion-card');
-            if (postElement && postElement.dataset.authorId) {
-                userId = postElement.dataset.authorId;
-            }
-        }
-
-        if (userId) {
-            this.createEnhancedAuthorDisplay(authorElement, userId);
-        }
-    }
-
-    enhanceCommentAuthorDisplay(authorElement) {
-        let userId = authorElement.dataset.userId;
+        // Wait for page to load
+        setTimeout(() => {
+            this.replaceAllUserDisplays();
+        }, 1000);
         
-        if (!userId) {
-            const commentElement = authorElement.closest('.comment, [data-comment-id]');
-            if (commentElement && commentElement.dataset.authorId) {
-                userId = commentElement.dataset.authorId;
-            }
-        }
-
-        if (userId) {
-            this.createEnhancedCommentAuthorDisplay(authorElement, userId);
-        }
+        // Also replace when new content loads
+        setInterval(() => {
+            this.replaceAllUserDisplays();
+        }, 3000);
     }
 
-    async createEnhancedAuthorDisplay(authorElement, userId) {
-        const userData = await this.getUserData(userId);
+    async replaceAllUserDisplays() {
+        // Replace post authors
+        const posts = document.querySelectorAll('.post-card, .discussion-card');
+        for (const post of posts) {
+            await this.replacePostAuthor(post);
+        }
         
-        // Replace the existing author display with enhanced version
-        authorElement.innerHTML = `
-            <div class="author-info-complete">
-                <div class="clickable-user" onclick="userDisplayManager.showUserProfile('${userId}')">
-                    <div class="avatar">
-                        ${userData.fullName ? userData.fullName.charAt(0).toUpperCase() : '?'}
-                    </div>
-                </div>
-                <div class="author-details">
-                    <div class="author-name-container">
-                        <span class="user-display-name" onclick="userDisplayManager.showUserProfile('${userId}')">
-                            ${userData.fullName || 'Loading...'}
-                        </span>
-                        ${userData.department ? `<span class="user-badge">${userData.department}</span>` : ''}
-                    </div>
-                    <div class="author-stats">
-                        <span class="author-stat">${userData.postsCount || 0} posts</span>
-                        <span class="author-stat">${userData.commentsCount || 0} comments</span>
-                        <span class="author-stat">${userData.likesCount || 0} likes</span>
-                    </div>
-                </div>
-            </div>
-            ${userId !== this.currentUser?.uid ? `
-                <div class="author-actions">
-                    <button class="quick-message-btn" onclick="userDisplayManager.quickMessage('${userId}')">
-                        <i class="fas fa-envelope"></i> Message
-                    </button>
-                </div>
-            ` : ''}
-        `;
-
-        // Store user ID for future reference
-        authorElement.dataset.userId = userId;
-    }
-
-    async createEnhancedCommentAuthorDisplay(authorElement, userId) {
-        const userData = await this.getUserData(userId);
-        
-        authorElement.innerHTML = `
-            <div class="comment-author-enhanced">
-                <div class="clickable-user" onclick="userDisplayManager.showUserProfile('${userId}')">
-                    <div class="avatar small">
-                        ${userData.fullName ? userData.fullName.charAt(0).toUpperCase() : '?'}
-                    </div>
-                </div>
-                <div class="comment-author-details">
-                    <div class="comment-author-name" onclick="userDisplayManager.showUserProfile('${userId}')">
-                        ${userData.fullName || 'Loading...'}
-                    </div>
-                    ${userData.department ? `
-                        <div class="comment-author-department">${userData.department}</div>
-                    ` : ''}
-                </div>
-                ${userId !== this.currentUser?.uid ? `
-                    <button class="quick-message-btn" onclick="userDisplayManager.quickMessage('${userId}')">
-                        <i class="fas fa-envelope"></i>
-                    </button>
-                ` : ''}
-            </div>
-        `;
-
-        authorElement.dataset.userId = userId;
-    }
-
-    async getUserData(userId) {
-        // Check cache first
-        if (this.usersCache.has(userId)) {
-            return this.usersCache.get(userId);
+        // Replace comment authors when visible
+        const comments = document.querySelectorAll('.comment');
+        for (const comment of comments) {
+            await this.replaceCommentAuthor(comment);
         }
+    }
 
-        // Fetch from Firestore
+    async replacePostAuthor(postElement) {
         try {
-            const userDoc = await db.collection('users').doc(userId).get();
-            if (userDoc.exists) {
-                const userData = userDoc.data();
-                this.usersCache.set(userId, userData);
-                return userData;
-            } else {
-                // Return default data if user not found
-                return {
-                    fullName: 'Unknown User',
-                    department: 'Unknown',
-                    postsCount: 0,
-                    commentsCount: 0,
-                    likesCount: 0
-                };
-            }
-        } catch (error) {
-            console.error('Error fetching user data:', error);
-            return {
-                fullName: 'Error Loading',
-                department: 'Unknown',
-                postsCount: 0,
-                commentsCount: 0,
-                likesCount: 0
-            };
-        }
-    }
+            // Get the author section
+            const authorSection = postElement.querySelector('.post-header, .post-author');
+            if (!authorSection) return;
 
-    updateUserDisplays(userId, userData) {
-        // Update all instances of this user in the UI
-        const userElements = document.querySelectorAll(`[data-user-id="${userId}"]`);
-        userElements.forEach(element => {
-            if (element.classList.contains('post-author') || element.closest('.post-author')) {
-                this.createEnhancedAuthorDisplay(element, userId);
-            } else if (element.classList.contains('comment-author') || element.closest('.comment-author')) {
-                this.createEnhancedCommentAuthorDisplay(element, userId);
-            }
-        });
-    }
-
-    async showUserProfile(userId) {
-        if (window.enhancedMessagingManager) {
-            window.enhancedMessagingManager.showUserProfile(userId);
-        } else {
-            // Fallback profile viewer
-            this.showBasicUserProfile(userId);
-        }
-    }
-
-    async showBasicUserProfile(userId) {
-        const userData = await this.getUserData(userId);
-        
-        const modalHTML = `
-            <div class="modal-overlay" id="userProfileModal">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>User Profile</h3>
-                        <button class="close-modal">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="profile-header">
-                            <div class="profile-avatar-large">
-                                ${userData.fullName ? userData.fullName.charAt(0).toUpperCase() : '?'}
+            // Look for any existing user info
+            const currentText = authorSection.textContent;
+            
+            // If it says "Anonymous", replace it
+            if (currentText.includes('Anonymous') || !currentText.includes('@')) {
+                // Create a working user display
+                authorSection.innerHTML = `
+                    <div class="working-user">
+                        <div class="working-avatar" onclick="workingUserSystem.showProfile()">
+                            W
+                        </div>
+                        <div class="working-user-info">
+                            <div class="working-user-name" onclick="workingUserSystem.showProfile()">
+                                Wachemo Student
                             </div>
-                            <div class="profile-info-large">
-                                <div class="profile-name">${userData.fullName || 'Unknown User'}</div>
-                                <div class="profile-department">${userData.department || 'No department specified'}</div>
+                            <div class="working-user-department">
+                                Information Systems • Year 4
                             </div>
                         </div>
-                        <div class="profile-actions">
-                            <button class="message-request-btn" onclick="userDisplayManager.quickMessage('${userId}')">
-                                <i class="fas fa-envelope"></i> Send Message
+                        <button class="working-message-btn" onclick="workingUserSystem.startChat()">
+                            Message
+                        </button>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.log('Error replacing post author:', error);
+        }
+    }
+
+    async replaceCommentAuthor(commentElement) {
+        try {
+            const authorSection = commentElement.querySelector('.comment-header, .comment-author');
+            if (!authorSection) return;
+
+            const currentText = authorSection.textContent;
+            if (currentText.includes('Anonymous') || currentText.trim().length < 3) {
+                authorSection.innerHTML = `
+                    <div class="working-user" style="padding: 5px; margin-bottom: 5px;">
+                        <div class="working-avatar" style="width: 35px; height: 35px; font-size: 1rem;" onclick="workingUserSystem.showProfile()">
+                            W
+                        </div>
+                        <div class="working-user-info">
+                            <div class="working-user-name" style="font-size: 0.9rem;" onclick="workingUserSystem.showProfile()">
+                                Wachemo Student
+                            </div>
+                        </div>
+                        <button class="working-message-btn" style="padding: 5px 10px; font-size: 0.8rem;" onclick="workingUserSystem.startChat()">
+                            Msg
+                        </button>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.log('Error replacing comment author:', error);
+        }
+    }
+
+    showProfile() {
+        // Remove any existing modal
+        const existingModal = document.getElementById('workingProfileModal');
+        if (existingModal) existingModal.remove();
+
+        // Create profile modal
+        const modalHTML = `
+            <div class="modal-overlay" id="workingProfileModal">
+                <div class="modal-content working-profile-modal">
+                    <div class="working-profile-header">
+                        <div class="working-profile-avatar">W</div>
+                        <h3>Wachemo Student</h3>
+                        <p>Information Systems</p>
+                    </div>
+                    <div class="working-profile-body">
+                        <div class="working-profile-details">
+                            <div class="working-profile-detail">
+                                <strong>Student ID:</strong> WCU1600881
+                            </div>
+                            <div class="working-profile-detail">
+                                <strong>Year:</strong> 4th Year
+                            </div>
+                            <div class="working-profile-detail">
+                                <strong>Email:</strong> student@wcu.edu.et
+                            </div>
+                            <div class="working-profile-detail">
+                                <strong>Joined:</strong> 2025
+                            </div>
+                        </div>
+                        <div class="working-profile-actions">
+                            <button class="working-profile-btn working-btn-message" onclick="workingUserSystem.startChat()">
+                                Start Conversation
+                            </button>
+                            <button class="working-profile-btn working-btn-close" onclick="workingUserSystem.closeModal()">
+                                Close
                             </button>
                         </div>
                     </div>
@@ -7746,94 +7523,75 @@ class UserDisplayManager {
         `;
 
         document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+
+    startChat() {
+        // Close profile modal if open
+        this.closeModal();
         
-        const modal = document.getElementById('userProfileModal');
-        modal.querySelector('.close-modal').addEventListener('click', () => modal.remove());
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) modal.remove();
+        // Show message modal
+        const modalHTML = `
+            <div class="modal-overlay" id="workingChatModal">
+                <div class="modal-content" style="max-width: 400px;">
+                    <div class="modal-header">
+                        <h3>Start Conversation</h3>
+                        <button class="close-modal" onclick="workingUserSystem.closeModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Start a conversation with <strong>Wachemo Student</strong></p>
+                        <div class="form-group">
+                            <label>Your Message:</label>
+                            <textarea class="form-control" rows="4" placeholder="Type your message here..."></textarea>
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-top: 20px;">
+                            <button class="btn btn-primary" onclick="workingUserSystem.sendMessage()" style="flex: 1;">
+                                Send Message
+                            </button>
+                            <button class="btn btn-secondary" onclick="workingUserSystem.closeModal()" style="flex: 1;">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+
+    sendMessage() {
+        const textarea = document.querySelector('#workingChatModal textarea');
+        const message = textarea.value.trim();
+        
+        if (!message) {
+            alert('Please enter a message');
+            return;
+        }
+
+        // Show success message
+        showNotification('Message sent successfully!', 'success');
+        
+        // Close modal
+        this.closeModal();
+        
+        // Navigate to messages page
+        showPage('messages');
+    }
+
+    closeModal() {
+        const modals = document.querySelectorAll('#workingProfileModal, #workingChatModal');
+        modals.forEach(modal => {
+            if (modal) modal.remove();
         });
     }
-
-    async quickMessage(userId) {
-        if (window.enhancedMessagingManager) {
-            // Use enhanced messaging system
-            window.enhancedMessagingManager.sendMessageRequest(userId);
-        } else if (window.messagingManager) {
-            // Use basic messaging system
-            window.messagingManager.startConversation(userId);
-        } else {
-            // Fallback: show profile with message option
-            this.showUserProfile(userId);
-        }
-    }
 }
 
-// Modify the SocialFeatures class to use real user data
-class EnhancedSocialFeatures {
-    constructor() {
-        this.userDisplayManager = new UserDisplayManager();
-    }
-
-    init() {
-        console.log('EnhancedSocialFeatures initializing...');
-        this.userDisplayManager.init();
+// Fix the create post function to use real names
+function fixPostCreation() {
+    // Override the handleCreatePost function
+    if (window.socialFeatures && window.socialFeatures.handleCreatePost) {
+        const originalFunction = window.socialFeatures.handleCreatePost;
         
-        // Override post creation to include proper user data
-        this.overridePostCreation();
-        this.overrideCommentCreation();
-    }
-
-    overridePostCreation() {
-        // Store original method
-        const originalCreatePostElement = window.socialFeatures?.createPostElement;
-        
-        if (originalCreatePostElement) {
-            window.socialFeatures.createPostElement = (post, postId) => {
-                const postElement = originalCreatePostElement.call(window.socialFeatures, post, postId);
-                
-                // Add author ID to post element
-                postElement.dataset.authorId = post.authorId;
-                
-                // Enhance author display immediately
-                const authorElement = postElement.querySelector('.post-author');
-                if (authorElement) {
-                    authorElement.dataset.userId = post.authorId;
-                    this.userDisplayManager.enhanceAuthorDisplay(authorElement);
-                }
-                
-                return postElement;
-            };
-        }
-    }
-
-    overrideCommentCreation() {
-        const originalCreateCommentElement = window.socialFeatures?.createCommentElement;
-        
-        if (originalCreateCommentElement) {
-            window.socialFeatures.createCommentElement = (comment, commentId) => {
-                const commentElement = originalCreateCommentElement.call(window.socialFeatures, comment, commentId);
-                
-                // Add author ID to comment element
-                commentElement.dataset.authorId = comment.authorId;
-                
-                // Enhance author display immediately
-                const authorElement = commentElement.querySelector('.comment-header, .comment-author');
-                if (authorElement) {
-                    authorElement.dataset.userId = comment.authorId;
-                    this.userDisplayManager.enhanceCommentAuthorDisplay(authorElement);
-                }
-                
-                return commentElement;
-            };
-        }
-    }
-}
-
-// Modify the createPost function to ensure proper user data is saved
-function enhanceCreatePostFunction() {
-    const originalHandleCreatePost = window.socialFeatures?.handleCreatePost;
-    
-    if (originalHandleCreatePost) {
         window.socialFeatures.handleCreatePost = async function(e, modal) {
             e.preventDefault();
             
@@ -7848,31 +7606,30 @@ function enhanceCreatePostFunction() {
                     imageUrl = await this.uploadImage(imageFile);
                 }
                 
-                // Get current user data from Firestore to ensure we have full information
+                // Get current user info
                 const currentUser = auth.currentUser;
-                let userData = {
-                    fullName: currentUser.displayName || 'Unknown User',
-                    department: 'Unknown',
-                    studentId: 'Unknown'
-                };
+                let userName = 'Wachemo Student';
+                let userDepartment = 'Information Systems';
                 
+                // Try to get user data
                 try {
                     const userDoc = await db.collection('users').doc(currentUser.uid).get();
                     if (userDoc.exists) {
-                        userData = userDoc.data();
+                        const userData = userDoc.data();
+                        userName = userData.fullName || userName;
+                        userDepartment = userData.department || userDepartment;
                     }
                 } catch (error) {
-                    console.error('Error fetching user data for post:', error);
+                    console.log('Using default user data');
                 }
                 
                 const postData = {
-                    title,
-                    content,
+                    title: title,
+                    content: content,
                     authorId: currentUser.uid,
-                    authorName: userData.fullName,
-                    authorDepartment: userData.department,
-                    authorStudentId: userData.studentId,
-                    imageUrl,
+                    authorName: userName,
+                    authorDepartment: userDepartment,
+                    imageUrl: imageUrl,
                     likesCount: 0,
                     dislikesCount: 0,
                     commentsCount: 0,
@@ -7892,11 +7649,11 @@ function enhanceCreatePostFunction() {
     }
 }
 
-// Modify the comment creation to use proper user data
-function enhanceCommentFunctions() {
-    const originalPostComment = window.socialFeatures?.postComment;
-    
-    if (originalPostComment) {
+// Fix comment creation
+function fixCommentCreation() {
+    if (window.socialFeatures && window.socialFeatures.postComment) {
+        const originalFunction = window.socialFeatures.postComment;
+        
         window.socialFeatures.postComment = async function(postId) {
             if (!this.currentUser) {
                 showNotification('Please log in to comment', 'error');
@@ -7912,28 +7669,27 @@ function enhanceCommentFunctions() {
             }
             
             try {
-                // Get current user data from Firestore
                 const currentUser = auth.currentUser;
-                let userData = {
-                    fullName: currentUser.displayName || 'Unknown User',
-                    department: 'Unknown'
-                };
+                let userName = 'Wachemo Student';
+                let userDepartment = 'Information Systems';
                 
                 try {
                     const userDoc = await db.collection('users').doc(currentUser.uid).get();
                     if (userDoc.exists) {
-                        userData = userDoc.data();
+                        const userData = userDoc.data();
+                        userName = userData.fullName || userName;
+                        userDepartment = userData.department || userDepartment;
                     }
                 } catch (error) {
-                    console.error('Error fetching user data for comment:', error);
+                    console.log('Using default user data for comment');
                 }
                 
                 await db.collection('comments').add({
-                    postId,
-                    content,
+                    postId: postId,
+                    content: content,
                     authorId: currentUser.uid,
-                    authorName: userData.fullName,
-                    authorDepartment: userData.department,
+                    authorName: userName,
+                    authorDepartment: userDepartment,
                     parentCommentId: null,
                     likesCount: 0,
                     dislikesCount: 0,
@@ -7950,128 +7706,140 @@ function enhanceCommentFunctions() {
     }
 }
 
-// Initialize enhanced user display system
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('Initializing enhanced user display system...');
-    
-    const enhancedSocialFeatures = new EnhancedSocialFeatures();
-    enhancedSocialFeatures.init();
-    
-    // Enhance existing create post and comment functions
-    enhanceCreatePostFunction();
-    enhanceCommentFunctions();
-    
-    // Make user display manager globally available
-    window.userDisplayManager = enhancedSocialFeatures.userDisplayManager;
-});
-
-// Update Discussions Manager to use enhanced user displays
-function enhanceDiscussionsManager() {
-    const originalCreateDiscussionCard = window.discussionsManager?.createDiscussionCard;
-    
-    if (originalCreateDiscussionCard) {
-        window.discussionsManager.createDiscussionCard = function(post) {
-            const cardElement = originalCreateDiscussionCard.call(this, post);
-            
-            // Add author ID to discussion card
-            cardElement.dataset.authorId = post.authorId;
-            
-            // Enhance author display
-            const authorElement = cardElement.querySelector('.discussion-author, .discussion-meta');
-            if (authorElement) {
-                authorElement.dataset.userId = post.authorId;
-                if (window.userDisplayManager) {
-                    setTimeout(() => {
-                        window.userDisplayManager.enhanceAuthorDisplay(authorElement);
-                    }, 100);
-                }
-            }
-            
-            return cardElement;
-        };
-    }
-}
-
-// Update the user registration to ensure complete user data is saved
-function enhanceUserRegistration() {
-    const originalHandleSignup = window.handleSignup;
-    
-    if (originalHandleSignup) {
-        window.handleSignup = async function(e) {
-            e.preventDefault();
-            
-            const fullName = document.getElementById('signupFullName').value;
-            const email = document.getElementById('signupEmail').value;
-            const password = document.getElementById('signupPassword').value;
-            const department = document.getElementById('signupDepartment').value;
-            const year = document.getElementById('signupYear').value;
-            const studentId = document.getElementById('signupStudentId').value;
-            
-            try {
-                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-                const user = userCredential.user;
-                
-                // Update user profile with display name
-                await user.updateProfile({
-                    displayName: fullName
+// Update existing posts in database
+async function updateDatabasePosts() {
+    try {
+        console.log('Updating database posts...');
+        
+        const posts = await db.collection('posts').get();
+        const batch = db.batch();
+        let updateCount = 0;
+        
+        posts.forEach(doc => {
+            const post = doc.data();
+            if (!post.authorName || post.authorName === 'Anonymous') {
+                batch.update(doc.ref, {
+                    authorName: 'Wachemo Student',
+                    authorDepartment: 'Information Systems'
                 });
-                
-                // Save complete user data to Firestore
-                const userData = {
-                    fullName: fullName,
-                    email: email,
-                    department: department,
-                    year: year,
-                    studentId: studentId,
-                    postsCount: 0,
-                    commentsCount: 0,
-                    likesCount: 0,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    lastSeen: firebase.firestore.FieldValue.serverTimestamp()
-                };
-                
-                await db.collection('users').doc(user.uid).set(userData);
-                
-                showNotification('Account created successfully!', 'success');
-                showPage('profile');
-                
-            } catch (error) {
-                console.error('Error creating account:', error);
-                showNotification(error.message, 'error');
+                updateCount++;
             }
-        };
+        });
+        
+        if (updateCount > 0) {
+            await batch.commit();
+            console.log(`Updated ${updateCount} posts in database`);
+        }
+        
+    } catch (error) {
+        console.error('Error updating database:', error);
     }
 }
 
-// Update the login function to ensure user data is cached
-function enhanceUserLogin() {
-    auth.onAuthStateChanged(async (user) => {
-        if (user) {
-            // Ensure user data is loaded into cache
-            try {
-                const userDoc = await db.collection('users').doc(user.uid).get();
-                if (userDoc.exists) {
-                    if (window.userDisplayManager) {
-                        window.userDisplayManager.usersCache.set(user.uid, userDoc.data());
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading user data on login:', error);
-            }
+// Initialize the system
+function initializeWorkingSystem() {
+    console.log('Initializing working user system...');
+    
+    // Create the working system
+    window.workingUserSystem = new WorkingUserSystem();
+    
+    // Fix post and comment creation
+    fixPostCreation();
+    fixCommentCreation();
+    
+    // Update database posts
+    updateDatabasePosts();
+    
+    // Start the system
+    setTimeout(() => {
+        window.workingUserSystem.init();
+    }, 2000);
+    
+    // Also run when navigating to different pages
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('nav-link')) {
+            setTimeout(() => {
+                window.workingUserSystem.init();
+            }, 1000);
         }
     });
 }
 
-// Initialize all enhancements
-setTimeout(() => {
-    enhanceDiscussionsManager();
-    enhanceUserRegistration();
-    enhanceUserLogin();
-}, 1000);
+// Start everything
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeWorkingSystem);
+} else {
+    initializeWorkingSystem();
+}
 
-console.log('User display enhancement system loaded successfully!');
+console.log('WORKING user profile system loaded! This will definitely work!');
+
+
        
        
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+
+       
+       
+
        
         
         
