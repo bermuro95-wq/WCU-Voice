@@ -7824,38 +7824,53 @@ console.log('WORKING user profile system loaded! This will definitely work!');
        
        
        
-       
 // ===============================
-// ULTIMATE FIX: Working Likes, Dislikes & Comments
+// COMPLETE USER PROFILES & FACEBOOK-STYLE COMMENTS
 // Paste this ENTIRE block at the end of your existing code
 // ===============================
 
-// Remove any existing social features and replace with this
-class WorkingSocialFeatures {
+class CompleteSocialSystem {
     constructor() {
         this.currentUser = null;
         this.postsListener = null;
         this.userReactions = new Map();
         this.commentsListeners = new Map();
+        this.usersCache = new Map();
     }
 
     init() {
-        console.log('WorkingSocialFeatures initializing...');
+        console.log('CompleteSocialSystem initializing...');
         
-        // Override the existing social features
+        // Override existing systems
         if (window.socialFeatures) {
-            window.socialFeatures.cleanupListeners && window.socialFeatures.cleanupListeners();
+            window.socialFeatures.cleanup && window.socialFeatures.cleanup();
         }
         
-        auth.onAuthStateChanged(user => {
+        auth.onAuthStateChanged(async (user) => {
             this.currentUser = user;
             if (user) {
+                await this.loadCurrentUserProfile();
                 this.loadUserReactions();
                 this.setupPostsListener();
+            } else {
+                this.cleanup();
             }
         });
         
         this.setupGlobalEventListeners();
+    }
+
+    async loadCurrentUserProfile() {
+        if (!this.currentUser) return;
+        
+        try {
+            const userDoc = await db.collection('users').doc(this.currentUser.uid).get();
+            if (userDoc.exists) {
+                this.usersCache.set(this.currentUser.uid, userDoc.data());
+            }
+        } catch (error) {
+            console.error('Error loading current user profile:', error);
+        }
     }
 
     async loadUserReactions() {
@@ -7880,7 +7895,6 @@ class WorkingSocialFeatures {
     }
 
     setupPostsListener() {
-        // Clean up previous listener
         if (this.postsListener) {
             this.postsListener();
         }
@@ -7896,14 +7910,13 @@ class WorkingSocialFeatures {
             });
     }
 
-    renderPosts(postDocs) {
+    async renderPosts(postDocs) {
         const postsContainer = document.getElementById('postsContainer');
         if (!postsContainer) {
             console.log('Posts container not found');
             return;
         }
         
-        // Clear existing posts
         postsContainer.innerHTML = '';
         
         if (postDocs.length === 0) {
@@ -7911,13 +7924,16 @@ class WorkingSocialFeatures {
                 <div class="post-card" style="text-align: center; padding: 40px;">
                     <h3>No posts yet</h3>
                     <p>Be the first to create a post!</p>
-                    <button class="btn btn-primary" onclick="workingSocialFeatures.showCreatePostModal()">
+                    <button class="btn btn-primary" onclick="completeSocialSystem.showCreatePostModal()">
                         Create First Post
                     </button>
                 </div>
             `;
             return;
         }
+        
+        // Load all post authors' profiles
+        await this.loadPostAuthors(postDocs);
         
         postDocs.forEach(doc => {
             const post = doc.data();
@@ -7926,22 +7942,49 @@ class WorkingSocialFeatures {
         });
     }
 
+    async loadPostAuthors(postDocs) {
+        const authorIds = new Set();
+        
+        postDocs.forEach(doc => {
+            const post = doc.data();
+            if (post.authorId && !this.usersCache.has(post.authorId)) {
+                authorIds.add(post.authorId);
+            }
+        });
+
+        // Load all author profiles
+        for (const authorId of authorIds) {
+            try {
+                const userDoc = await db.collection('users').doc(authorId).get();
+                if (userDoc.exists) {
+                    this.usersCache.set(authorId, userDoc.data());
+                }
+            } catch (error) {
+                console.error('Error loading user profile:', error);
+            }
+        }
+    }
+
     createPostElement(post, postId) {
         const postElement = document.createElement('div');
         postElement.className = 'post-card';
         postElement.setAttribute('data-post-id', postId);
         
+        const author = this.usersCache.get(post.authorId) || {};
         const userReaction = this.userReactions.get(`post_${postId}`);
         const likeActive = userReaction === 'like' ? 'active' : '';
         const dislikeActive = userReaction === 'dislike' ? 'active' : '';
         
         postElement.innerHTML = `
             <div class="post-header">
-                <div class="post-author">
-                    <div class="avatar">${post.authorName ? post.authorName.charAt(0).toUpperCase() : 'U'}</div>
+                <div class="post-author" onclick="completeSocialSystem.showUserProfile('${post.authorId}')" style="cursor: pointer;">
+                    <div class="avatar">${author.fullName ? author.fullName.charAt(0).toUpperCase() : 'U'}</div>
                     <div>
-                        <div class="author-name">${post.authorName || 'User'}</div>
-                        <div class="post-time">${this.formatTime(post.createdAt)}</div>
+                        <div class="author-name">${author.fullName || 'User'}</div>
+                        <div class="author-details">
+                            <span class="author-department">${author.department || 'No Department'}</span>
+                            <span class="post-time">${this.formatTime(post.createdAt)}</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -7951,14 +7994,14 @@ class WorkingSocialFeatures {
             
             ${post.imageUrl ? `
                 <div class="post-image">
-                    <img src="${post.imageUrl}" alt="Post image" style="max-width: 100%; border-radius: 8px; margin: 10px 0;">
+                    <img src="${post.imageUrl}" alt="Post image">
                 </div>
             ` : ''}
             
             <div class="post-stats">
-                <span class="likes-count">${post.likesCount || 0} likes</span>
-                <span class="dislikes-count">${post.dislikesCount || 0} dislikes</span>
-                <span class="comments-count">${post.commentsCount || 0} comments</span>
+                <span class="likes-count"><i class="fas fa-thumbs-up"></i> ${post.likesCount || 0}</span>
+                <span class="dislikes-count"><i class="fas fa-thumbs-down"></i> ${post.dislikesCount || 0}</span>
+                <span class="comments-count"><i class="fas fa-comment"></i> ${post.commentsCount || 0}</span>
             </div>
             
             <div class="post-actions">
@@ -7973,12 +8016,17 @@ class WorkingSocialFeatures {
                 </button>
             </div>
             
-            <div class="comments-section hidden" id="comments-${postId}">
+            <div class="comments-section" id="comments-${postId}">
                 <div class="comment-form">
-                    <textarea class="comment-input" placeholder="Write a comment..." rows="3" id="comment-input-${postId}"></textarea>
-                    <button class="btn btn-primary post-comment-btn" data-post-id="${postId}" style="margin-top: 10px;">
-                        Post Comment
-                    </button>
+                    <div class="comment-input-container">
+                        <div class="current-user-avatar">
+                            ${this.currentUser ? (this.usersCache.get(this.currentUser.uid)?.fullName?.charAt(0) || 'U') : 'U'}
+                        </div>
+                        <div class="comment-input-wrapper">
+                            <textarea class="comment-input" placeholder="Write a comment..." rows="1" id="comment-input-${postId}"></textarea>
+                            <button class="btn btn-primary post-comment-btn" data-post-id="${postId}">Post</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="comments-list" id="comments-list-${postId}">
                     <div class="loading-comments">Loading comments...</div>
@@ -8016,6 +8064,14 @@ class WorkingSocialFeatures {
                 this.postComment(postId);
             });
         }
+        
+        // Auto-resize comment textarea
+        const commentInput = postElement.querySelector('.comment-input');
+        if (commentInput) {
+            commentInput.addEventListener('input', (e) => {
+                this.autoResizeTextarea(e.target);
+            });
+        }
     }
 
     async handleReaction(button) {
@@ -8031,38 +8087,29 @@ class WorkingSocialFeatures {
         const reactionType = isLike ? 'like' : 'dislike';
         
         try {
-            // Check if user already reacted
             const existingReactionQuery = await db.collection('reactions')
                 .where('userId', '==', this.currentUser.uid)
                 .where('targetType', '==', targetType)
                 .where('targetId', '==', targetId)
                 .get();
             
-            let operation;
-            
             if (!existingReactionQuery.empty) {
                 const existingReaction = existingReactionQuery.docs[0];
                 const existingData = existingReaction.data();
                 
                 if (existingData.type === reactionType) {
-                    // Remove reaction
                     await existingReaction.ref.delete();
                     await this.updateCounters(targetType, targetId, reactionType, -1);
-                    operation = 'removed';
                 } else {
-                    // Update reaction (like to dislike or vice versa)
                     await existingReaction.ref.update({ 
                         type: reactionType,
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
-                    // Decrement old reaction, increment new reaction
                     const oldType = existingData.type;
                     await this.updateCounters(targetType, targetId, oldType, -1);
                     await this.updateCounters(targetType, targetId, reactionType, 1);
-                    operation = 'updated';
                 }
             } else {
-                // Create new reaction
                 await db.collection('reactions').add({
                     targetType: targetType,
                     targetId: targetId,
@@ -8072,10 +8119,8 @@ class WorkingSocialFeatures {
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 await this.updateCounters(targetType, targetId, reactionType, 1);
-                operation = 'added';
             }
             
-            // Reload user reactions to update UI
             this.loadUserReactions();
             
         } catch (error) {
@@ -8111,7 +8156,6 @@ class WorkingSocialFeatures {
             this.setupCommentsListener(postId, commentsList);
         } else {
             commentsSection.classList.add('hidden');
-            // Clean up listener when hiding
             if (this.commentsListeners.has(postId)) {
                 this.commentsListeners.get(postId)();
                 this.commentsListeners.delete(postId);
@@ -8127,7 +8171,7 @@ class WorkingSocialFeatures {
                 .orderBy('createdAt', 'asc')
                 .get();
             
-            this.renderComments(commentsSnapshot.docs, commentsList);
+            await this.renderComments(commentsSnapshot.docs, commentsList);
         } catch (error) {
             console.error('Error loading comments:', error);
             commentsList.innerHTML = '<div class="error-comments">Error loading comments</div>';
@@ -8135,7 +8179,6 @@ class WorkingSocialFeatures {
     }
 
     setupCommentsListener(postId, commentsList) {
-        // Clean up previous listener for this post
         if (this.commentsListeners.has(postId)) {
             this.commentsListeners.get(postId)();
         }
@@ -8153,47 +8196,98 @@ class WorkingSocialFeatures {
         this.commentsListeners.set(postId, listener);
     }
 
-    renderComments(commentDocs, commentsList) {
+    async renderComments(commentDocs, commentsList) {
         if (commentDocs.length === 0) {
             commentsList.innerHTML = '<div class="empty-comments">No comments yet. Be the first to comment!</div>';
             return;
         }
         
+        // Load comment authors
+        await this.loadCommentAuthors(commentDocs);
+        
         commentsList.innerHTML = '';
-        commentDocs.forEach(doc => {
+        for (const doc of commentDocs) {
             const comment = doc.data();
-            const commentElement = this.createCommentElement(comment, doc.id);
+            const commentElement = await this.createCommentElement(comment, doc.id);
             commentsList.appendChild(commentElement);
-        });
+            
+            // Load replies for this comment
+            await this.loadReplies(doc.id, commentElement);
+        }
     }
 
-    createCommentElement(comment, commentId) {
+    async loadCommentAuthors(commentDocs) {
+        const authorIds = new Set();
+        
+        commentDocs.forEach(doc => {
+            const comment = doc.data();
+            if (comment.authorId && !this.usersCache.has(comment.authorId)) {
+                authorIds.add(comment.authorId);
+            }
+        });
+
+        for (const authorId of authorIds) {
+            try {
+                const userDoc = await db.collection('users').doc(authorId).get();
+                if (userDoc.exists) {
+                    this.usersCache.set(authorId, userDoc.data());
+                }
+            } catch (error) {
+                console.error('Error loading comment author:', error);
+            }
+        }
+    }
+
+    async createCommentElement(comment, commentId) {
+        const author = this.usersCache.get(comment.authorId) || {};
         const userReaction = this.userReactions.get(`comment_${commentId}`);
         const likeActive = userReaction === 'like' ? 'active' : '';
         const dislikeActive = userReaction === 'dislike' ? 'active' : '';
         
+        // Get replies count
+        const repliesSnapshot = await db.collection('comments')
+            .where('parentCommentId', '==', commentId)
+            .get();
+        const repliesCount = repliesSnapshot.size;
+        
         const commentElement = document.createElement('div');
         commentElement.className = 'comment';
         commentElement.innerHTML = `
-            <div class="comment-header">
-                <div class="comment-author">
-                    <div class="avatar small">${comment.authorName ? comment.authorName.charAt(0).toUpperCase() : 'U'}</div>
-                    <span class="author-name">${comment.authorName || 'User'}</span>
-                    <span class="comment-time">${this.formatTime(comment.createdAt)}</span>
+            <div class="comment-main">
+                <div class="comment-avatar" onclick="completeSocialSystem.showUserProfile('${comment.authorId}')">
+                    ${author.fullName ? author.fullName.charAt(0).toUpperCase() : 'U'}
+                </div>
+                <div class="comment-content">
+                    <div class="comment-header">
+                        <span class="comment-author" onclick="completeSocialSystem.showUserProfile('${comment.authorId}')">${author.fullName || 'User'}</span>
+                        <span class="comment-time">${this.formatTime(comment.createdAt)}</span>
+                    </div>
+                    <div class="comment-text">${comment.content || ''}</div>
+                    <div class="comment-actions">
+                        <button class="comment-action-btn like-btn ${likeActive}" data-target-type="comment" data-target-id="${commentId}">
+                            Like
+                        </button>
+                        <button class="comment-action-btn reply-btn" data-comment-id="${commentId}">
+                            Reply
+                        </button>
+                        <span class="comment-stats">
+                            ${comment.likesCount || 0} likes
+                            ${repliesCount > 0 ? ` • ${repliesCount} ${repliesCount === 1 ? 'reply' : 'replies'}` : ''}
+                        </span>
+                    </div>
                 </div>
             </div>
-            <div class="comment-content">${comment.content || ''}</div>
-            <div class="comment-stats">
-                <span class="likes-count">${comment.likesCount || 0} likes</span>
-                <span class="dislikes-count">${comment.dislikesCount || 0} dislikes</span>
-            </div>
-            <div class="comment-actions">
-                <button class="action-btn like-btn ${likeActive}" data-target-type="comment" data-target-id="${commentId}">
-                    <i class="fas fa-thumbs-up"></i> Like
-                </button>
-                <button class="action-btn dislike-btn ${dislikeActive}" data-target-type="comment" data-target-id="${commentId}">
-                    <i class="fas fa-thumbs-down"></i> Dislike
-                </button>
+            <div class="replies-container" id="replies-${commentId}"></div>
+            <div class="reply-form hidden" id="reply-form-${commentId}">
+                <div class="comment-input-container">
+                    <div class="current-user-avatar small">
+                        ${this.currentUser ? (this.usersCache.get(this.currentUser.uid)?.fullName?.charAt(0) || 'U') : 'U'}
+                    </div>
+                    <div class="comment-input-wrapper">
+                        <textarea class="reply-input" placeholder="Write a reply..." rows="1" id="reply-input-${commentId}"></textarea>
+                        <button class="btn btn-primary post-reply-btn" data-comment-id="${commentId}">Reply</button>
+                    </div>
+                </div>
             </div>
         `;
         
@@ -8202,12 +8296,118 @@ class WorkingSocialFeatures {
     }
 
     attachCommentEventListeners(commentElement, commentId) {
-        commentElement.querySelectorAll('.like-btn, .dislike-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+        // Like button
+        const likeBtn = commentElement.querySelector('.like-btn');
+        if (likeBtn) {
+            likeBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                this.handleReaction(btn);
+                this.handleReaction(likeBtn);
             });
-        });
+        }
+        
+        // Reply button
+        const replyBtn = commentElement.querySelector('.reply-btn');
+        if (replyBtn) {
+            replyBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleReplyForm(commentId);
+            });
+        }
+        
+        // Post reply button
+        const postReplyBtn = commentElement.querySelector('.post-reply-btn');
+        if (postReplyBtn) {
+            postReplyBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.postReply(commentId);
+            });
+        }
+        
+        // Auto-resize reply textarea
+        const replyInput = commentElement.querySelector('.reply-input');
+        if (replyInput) {
+            replyInput.addEventListener('input', (e) => {
+                this.autoResizeTextarea(e.target);
+            });
+        }
+    }
+
+    async loadReplies(commentId, commentElement) {
+        try {
+            const repliesSnapshot = await db.collection('comments')
+                .where('parentCommentId', '==', commentId)
+                .orderBy('createdAt', 'asc')
+                .get();
+            
+            if (repliesSnapshot.empty) return;
+            
+            await this.loadCommentAuthors(repliesSnapshot.docs);
+            
+            const repliesContainer = commentElement.querySelector('.replies-container');
+            repliesSnapshot.docs.forEach(doc => {
+                const reply = doc.data();
+                const replyElement = this.createReplyElement(reply, doc.id);
+                repliesContainer.appendChild(replyElement);
+            });
+        } catch (error) {
+            console.error('Error loading replies:', error);
+        }
+    }
+
+    createReplyElement(reply, replyId) {
+        const author = this.usersCache.get(reply.authorId) || {};
+        const userReaction = this.userReactions.get(`comment_${replyId}`);
+        const likeActive = userReaction === 'like' ? 'active' : '';
+        
+        const replyElement = document.createElement('div');
+        replyElement.className = 'reply';
+        replyElement.innerHTML = `
+            <div class="reply-main">
+                <div class="comment-avatar small" onclick="completeSocialSystem.showUserProfile('${reply.authorId}')">
+                    ${author.fullName ? author.fullName.charAt(0).toUpperCase() : 'U'}
+                </div>
+                <div class="reply-content">
+                    <div class="comment-header">
+                        <span class="comment-author" onclick="completeSocialSystem.showUserProfile('${reply.authorId}')">${author.fullName || 'User'}</span>
+                        <span class="comment-time">${this.formatTime(reply.createdAt)}</span>
+                    </div>
+                    <div class="comment-text">${reply.content || ''}</div>
+                    <div class="comment-actions">
+                        <button class="comment-action-btn like-btn ${likeActive}" data-target-type="comment" data-target-id="${replyId}">
+                            Like
+                        </button>
+                        <span class="comment-stats">${reply.likesCount || 0} likes</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        this.attachReplyEventListeners(replyElement, replyId);
+        return replyElement;
+    }
+
+    attachReplyEventListeners(replyElement, replyId) {
+        const likeBtn = replyElement.querySelector('.like-btn');
+        if (likeBtn) {
+            likeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.handleReaction(likeBtn);
+            });
+        }
+    }
+
+    toggleReplyForm(commentId) {
+        const replyForm = document.getElementById(`reply-form-${commentId}`);
+        if (!replyForm) return;
+        
+        replyForm.classList.toggle('hidden');
+        
+        if (!replyForm.classList.contains('hidden')) {
+            const replyInput = document.getElementById(`reply-input-${commentId}`);
+            if (replyInput) {
+                replyInput.focus();
+            }
+        }
     }
 
     async postComment(postId) {
@@ -8227,42 +8427,180 @@ class WorkingSocialFeatures {
         }
         
         try {
-            // Get user data
-            let userName = 'User';
-            try {
-                const userDoc = await db.collection('users').doc(this.currentUser.uid).get();
-                if (userDoc.exists) {
-                    const userData = userDoc.data();
-                    userName = userData.fullName || this.currentUser.displayName || 'User';
-                }
-            } catch (error) {
-                console.log('Using default username');
-            }
+            const currentUserData = this.usersCache.get(this.currentUser.uid) || {};
             
-            // Add comment
             await db.collection('comments').add({
                 postId: postId,
                 content: content,
                 authorId: this.currentUser.uid,
-                authorName: userName,
+                authorName: currentUserData.fullName || 'User',
+                authorDepartment: currentUserData.department || '',
                 parentCommentId: null,
                 likesCount: 0,
                 dislikesCount: 0,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             
-            // Update post comments count
             await db.collection('posts').doc(postId).update({
                 commentsCount: firebase.firestore.FieldValue.increment(1)
             });
             
             commentInput.value = '';
+            this.autoResizeTextarea(commentInput);
             showNotification('Comment posted successfully!', 'success');
             
         } catch (error) {
             console.error('Error posting comment:', error);
-            showNotification('Error posting comment: ' + error.message, 'error');
+            showNotification('Error posting comment', 'error');
         }
+    }
+
+    async postReply(parentCommentId) {
+        if (!this.currentUser) {
+            showNotification('Please log in to reply', 'error');
+            showPage('login');
+            return;
+        }
+        
+        const replyInput = document.getElementById(`reply-input-${parentCommentId}`);
+        if (!replyInput) return;
+        
+        const content = replyInput.value.trim();
+        if (!content) {
+            showNotification('Please enter a reply', 'error');
+            return;
+        }
+        
+        try {
+            // Get postId from parent comment
+            const parentComment = await db.collection('comments').doc(parentCommentId).get();
+            const postId = parentComment.data().postId;
+            
+            const currentUserData = this.usersCache.get(this.currentUser.uid) || {};
+            
+            await db.collection('comments').add({
+                postId: postId,
+                content: content,
+                authorId: this.currentUser.uid,
+                authorName: currentUserData.fullName || 'User',
+                authorDepartment: currentUserData.department || '',
+                parentCommentId: parentCommentId,
+                likesCount: 0,
+                dislikesCount: 0,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            replyInput.value = '';
+            this.toggleReplyForm(parentCommentId);
+            showNotification('Reply posted successfully!', 'success');
+            
+        } catch (error) {
+            console.error('Error posting reply:', error);
+            showNotification('Error posting reply', 'error');
+        }
+    }
+
+    async showUserProfile(userId) {
+        let userData = this.usersCache.get(userId);
+        
+        if (!userData) {
+            try {
+                const userDoc = await db.collection('users').doc(userId).get();
+                if (userDoc.exists) {
+                    userData = userDoc.data();
+                    this.usersCache.set(userId, userData);
+                } else {
+                    showNotification('User profile not found', 'error');
+                    return;
+                }
+            } catch (error) {
+                console.error('Error loading user profile:', error);
+                showNotification('Error loading profile', 'error');
+                return;
+            }
+        }
+
+        // Create profile modal
+        const modalHTML = `
+            <div class="modal-overlay" id="userProfileModal">
+                <div class="modal-content user-profile-modal">
+                    <div class="modal-header">
+                        <h3>User Profile</h3>
+                        <button class="close-modal">&times;</button>
+                    </div>
+                    <div class="profile-content">
+                        <div class="profile-header">
+                            <div class="profile-avatar-large">
+                                ${userData.fullName ? userData.fullName.charAt(0).toUpperCase() : 'U'}
+                            </div>
+                            <div class="profile-info">
+                                <h2 class="profile-name">${userData.fullName || 'User'}</h2>
+                                <p class="profile-department">${userData.department || 'No department specified'}</p>
+                                <p class="profile-email">${userData.email || 'No email provided'}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="profile-details">
+                            <div class="detail-item">
+                                <label>Student ID:</label>
+                                <span>${userData.studentId || 'Not provided'}</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>Year of Study:</label>
+                                <span>${userData.year ? `Year ${userData.year}` : 'Not specified'}</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>Department:</label>
+                                <span>${userData.department || 'Not specified'}</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>Member Since:</label>
+                                <span>${userData.createdAt ? userData.createdAt.toDate().toLocaleDateString() : 'Unknown'}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="profile-stats">
+                            <div class="stat">
+                                <div class="stat-number">0</div>
+                                <div class="stat-label">Posts</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-number">0</div>
+                                <div class="stat-label">Comments</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-number">0</div>
+                                <div class="stat-label">Likes</div>
+                            </div>
+                        </div>
+                        
+                        ${userId !== this.currentUser?.uid ? `
+                            <div class="profile-actions">
+                                <button class="btn btn-primary" onclick="completeSocialSystem.startConversation('${userId}')">
+                                    <i class="fas fa-envelope"></i> Send Message
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        const modal = document.getElementById('userProfileModal');
+        const closeBtn = modal.querySelector('.close-modal');
+        
+        closeBtn.addEventListener('click', () => modal.remove());
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
+    }
+
+    startConversation(userId) {
+        showNotification('Opening conversation...', 'info');
+        showPage('messages');
+        // You can integrate this with your messaging system
     }
 
     updateAllReactionButtons() {
@@ -8288,6 +8626,11 @@ class WorkingSocialFeatures {
         });
     }
 
+    autoResizeTextarea(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+    }
+
     formatTime(timestamp) {
         if (!timestamp) return 'Recently';
         try {
@@ -8311,36 +8654,25 @@ class WorkingSocialFeatures {
     }
 
     setupGlobalEventListeners() {
-        // Global click handler for dynamically created elements
         document.addEventListener('click', (e) => {
-            // Handle like/dislike buttons
             if (e.target.classList.contains('like-btn') || e.target.classList.contains('dislike-btn')) {
-                const btn = e.target.classList.contains('action-btn') ? e.target : e.target.closest('.action-btn');
+                const btn = e.target.classList.contains('action-btn') || e.target.classList.contains('comment-action-btn') 
+                    ? e.target 
+                    : e.target.closest('.action-btn') || e.target.closest('.comment-action-btn');
                 if (btn) {
                     this.handleReaction(btn);
-                }
-            }
-            
-            // Handle comment buttons
-            if (e.target.classList.contains('comment-btn') || e.target.closest('.comment-btn')) {
-                const btn = e.target.classList.contains('comment-btn') ? e.target : e.target.closest('.comment-btn');
-                if (btn && btn.dataset.postId) {
-                    this.toggleCommentsSection(btn.dataset.postId);
-                }
-            }
-            
-            // Handle post comment buttons
-            if (e.target.classList.contains('post-comment-btn') || e.target.closest('.post-comment-btn')) {
-                const btn = e.target.classList.contains('post-comment-btn') ? e.target : e.target.closest('.post-comment-btn');
-                if (btn && btn.dataset.postId) {
-                    this.postComment(btn.dataset.postId);
                 }
             }
         });
     }
 
     showCreatePostModal() {
-        // Simple create post modal
+        if (!this.currentUser) {
+            showNotification('Please log in to create a post', 'error');
+            showPage('login');
+            return;
+        }
+
         const modalHTML = `
             <div class="modal-overlay" id="createPostModal">
                 <div class="modal-content">
@@ -8351,11 +8683,11 @@ class WorkingSocialFeatures {
                     <form id="createPostForm">
                         <div class="form-group">
                             <label for="postTitle">Title</label>
-                            <input type="text" id="postTitle" class="form-control" required>
+                            <input type="text" id="postTitle" class="form-control" required placeholder="What's on your mind?">
                         </div>
                         <div class="form-group">
                             <label for="postContent">Content</label>
-                            <textarea id="postContent" class="form-control" rows="6" required></textarea>
+                            <textarea id="postContent" class="form-control" rows="6" required placeholder="Share your thoughts..."></textarea>
                         </div>
                         <div class="form-actions">
                             <button type="button" class="btn btn-secondary close-modal">Cancel</button>
@@ -8371,7 +8703,6 @@ class WorkingSocialFeatures {
         const modal = document.getElementById('createPostModal');
         const form = document.getElementById('createPostForm');
         
-        // Event listeners
         modal.querySelectorAll('.close-modal').forEach(btn => {
             btn.addEventListener('click', () => modal.remove());
         });
@@ -8390,22 +8721,14 @@ class WorkingSocialFeatures {
         const content = document.getElementById('postContent').value;
         
         try {
-            let userName = 'User';
-            try {
-                const userDoc = await db.collection('users').doc(this.currentUser.uid).get();
-                if (userDoc.exists) {
-                    const userData = userDoc.data();
-                    userName = userData.fullName || this.currentUser.displayName || 'User';
-                }
-            } catch (error) {
-                console.log('Using default username');
-            }
+            const currentUserData = this.usersCache.get(this.currentUser.uid) || {};
             
             await db.collection('posts').add({
                 title: title,
                 content: content,
                 authorId: this.currentUser.uid,
-                authorName: userName,
+                authorName: currentUserData.fullName || 'User',
+                authorDepartment: currentUserData.department || '',
                 likesCount: 0,
                 dislikesCount: 0,
                 commentsCount: 0,
@@ -8428,71 +8751,38 @@ class WorkingSocialFeatures {
     }
 }
 
-// Add CSS for the working features
-const workingCSS = `
-.post-stats {
-    display: flex;
-    gap: 15px;
-    margin: 15px 0;
-    padding: 12px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    color: #666;
-    border: 1px solid #e9ecef;
-}
-
-.post-stats span {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.comments-section {
-    margin-top: 20px;
-    padding: 20px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    border: 1px solid #e9ecef;
-}
-
-.comment-form {
-    margin-bottom: 20px;
-    padding: 15px;
+// Add the complete CSS for Facebook-style interface
+const completeCSS = `
+/* Post Styles */
+.post-card {
     background: white;
     border-radius: 8px;
-    border: 1px solid #e9ecef;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    border: 1px solid #e0e0e0;
 }
 
-.comment-input {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    resize: vertical;
-    font-family: inherit;
-    font-size: 0.9rem;
+.post-header {
+    margin-bottom: 12px;
 }
 
-.comment {
-    background: white;
-    padding: 15px;
-    margin: 10px 0;
-    border-radius: 8px;
-    border: 1px solid #e9ecef;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.comment-header {
+.post-author {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: 12px;
+    padding: 8px;
+    border-radius: 8px;
+    transition: background-color 0.2s;
 }
 
-.avatar.small {
-    width: 30px;
-    height: 30px;
+.post-author:hover {
+    background: #f5f5f5;
+}
+
+.avatar {
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     background: #3498db;
     color: white;
@@ -8500,61 +8790,97 @@ const workingCSS = `
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    font-size: 0.8rem;
+    font-size: 1.1rem;
 }
 
 .author-name {
     font-weight: 600;
-    font-size: 0.9rem;
     color: #2c3e50;
+    margin-bottom: 2px;
 }
 
-.comment-time {
+.author-details {
+    display: flex;
+    gap: 12px;
     font-size: 0.8rem;
     color: #7f8c8d;
 }
 
-.comment-content {
-    margin-bottom: 10px;
+.author-department {
+    font-weight: 500;
+}
+
+.post-time {
+    color: #95a5a6;
+}
+
+.post-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: #2c3e50;
+}
+
+.post-content {
     line-height: 1.5;
+    margin-bottom: 16px;
     color: #2c3e50;
+    white-space: pre-wrap;
 }
 
-.comment-stats {
-    font-size: 0.8rem;
+.post-image img {
+    width: 100%;
+    max-height: 400px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin: 12px 0;
+}
+
+.post-stats {
+    display: flex;
+    gap: 20px;
+    padding: 12px 0;
+    border-bottom: 1px solid #e0e0e0;
+    margin-bottom: 12px;
+    font-size: 0.9rem;
     color: #7f8c8d;
-    margin-bottom: 8px;
-    display: flex;
-    gap: 15px;
 }
 
-.comment-actions {
+.post-stats span {
     display: flex;
-    gap: 15px;
+    align-items: center;
+    gap: 6px;
+}
+
+.post-actions {
+    display: flex;
+    gap: 8px;
+    padding: 8px 0;
 }
 
 .action-btn {
+    flex: 1;
     background: none;
     border: none;
-    color: #7f8c8d;
+    padding: 8px 16px;
+    border-radius: 4px;
     cursor: pointer;
-    padding: 6px 12px;
-    border-radius: 6px;
-    transition: all 0.3s ease;
-    font-size: 0.9rem;
+    font-weight: 500;
+    color: #7f8c8d;
+    transition: all 0.2s;
     display: flex;
     align-items: center;
-    gap: 5px;
+    justify-content: center;
+    gap: 6px;
 }
 
 .action-btn:hover {
-    background: #e9ecef;
+    background: #f5f5f5;
     color: #2c3e50;
 }
 
 .action-btn.active {
     color: #3498db;
-    font-weight: 600;
 }
 
 .like-btn.active {
@@ -8565,29 +8891,308 @@ const workingCSS = `
     color: #ff4444;
 }
 
-.loading-comments, .empty-comments, .error-comments {
-    text-align: center;
-    padding: 30px;
-    color: #7f8c8d;
-    font-style: italic;
+/* Comments Section */
+.comments-section {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #e0e0e0;
 }
 
-.post-actions {
+.comment-form {
+    margin-bottom: 16px;
+}
+
+.comment-input-container {
     display: flex;
-    gap: 15px;
-    margin-top: 15px;
-    padding-top: 15px;
-    border-top: 1px solid #e9ecef;
+    gap: 12px;
+    align-items: flex-start;
 }
 
-.post-image img {
-    max-width: 100%;
-    border-radius: 8px;
-    margin: 10px 0;
+.current-user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #3498db;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.9rem;
+    flex-shrink: 0;
 }
 
+.current-user-avatar.small {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
+}
+
+.comment-input-wrapper {
+    flex: 1;
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.comment-input, .reply-input {
+    flex: 1;
+    padding: 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 20px;
+    resize: none;
+    font-family: inherit;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.comment-input:focus, .reply-input:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+/* Comments List */
+.comments-list {
+    space-y: 12px;
+}
+
+.comment {
+    padding: 12px 0;
+}
+
+.comment-main {
+    display: flex;
+    gap: 12px;
+}
+
+.comment-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #27ae60;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.8rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.comment-avatar.small {
+    width: 28px;
+    height: 28px;
+    font-size: 0.7rem;
+}
+
+.comment-content {
+    flex: 1;
+}
+
+.comment-header {
+    margin-bottom: 4px;
+}
+
+.comment-author {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #2c3e50;
+    cursor: pointer;
+    margin-right: 8px;
+}
+
+.comment-author:hover {
+    text-decoration: underline;
+}
+
+.comment-time {
+    font-size: 0.8rem;
+    color: #7f8c8d;
+}
+
+.comment-text {
+    line-height: 1.4;
+    margin-bottom: 6px;
+    color: #2c3e50;
+}
+
+.comment-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.comment-action-btn {
+    background: none;
+    border: none;
+    color: #7f8c8d;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.comment-action-btn:hover {
+    background: #f5f5f5;
+    color: #2c3e50;
+}
+
+.comment-action-btn.active {
+    color: #3498db;
+}
+
+.comment-stats {
+    font-size: 0.8rem;
+    color: #7f8c8d;
+}
+
+/* Replies */
+.replies-container {
+    margin-left: 44px;
+    margin-top: 8px;
+    border-left: 2px solid #f0f0f0;
+    padding-left: 12px;
+}
+
+.reply {
+    padding: 8px 0;
+}
+
+.reply-main {
+    display: flex;
+    gap: 8px;
+}
+
+.reply-content {
+    flex: 1;
+}
+
+.reply-form {
+    margin-top: 8px;
+    margin-left: 44px;
+}
+
+/* User Profile Modal */
+.user-profile-modal {
+    max-width: 500px;
+}
+
+.profile-content {
+    padding: 0;
+}
+
+.profile-header {
+    background: linear-gradient(135deg, #3498db, #2c3e50);
+    color: white;
+    padding: 30px 20px;
+    text-align: center;
+}
+
+.profile-avatar-large {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: bold;
+    margin: 0 auto 15px;
+    border: 3px solid white;
+}
+
+.profile-info h2 {
+    margin: 0 0 8px 0;
+    font-size: 1.5rem;
+}
+
+.profile-department {
+    margin: 0 0 4px 0;
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+.profile-email {
+    margin: 0;
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.profile-details {
+    padding: 20px;
+}
+
+.detail-item {
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-item:last-child {
+    border-bottom: none;
+}
+
+.detail-item label {
+    font-weight: 600;
+    color: #2c3e50;
+    min-width: 120px;
+}
+
+.detail-item span {
+    color: #7f8c8d;
+    text-align: right;
+}
+
+.profile-stats {
+    display: flex;
+    justify-content: space-around;
+    padding: 20px;
+    background: #f8f9fa;
+    border-top: 1px solid #e0e0e0;
+}
+
+.stat {
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #3498db;
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: #7f8c8d;
+}
+
+.profile-actions {
+    padding: 20px;
+    border-top: 1px solid #e0e0e0;
+}
+
+/* Utilities */
 .hidden {
     display: none !important;
+}
+
+.space-y-12 > * + * {
+    margin-top: 12px;
+}
+
+.loading-comments, .empty-comments, .error-comments {
+    text-align: center;
+    padding: 20px;
+    color: #7f8c8d;
+    font-style: italic;
 }
 
 /* Modal styles */
@@ -8607,9 +9212,8 @@ const workingCSS = `
 .modal-content {
     background: white;
     border-radius: 8px;
-    padding: 20px;
     width: 90%;
-    max-width: 500px;
+    max-width: 600px;
     max-height: 90vh;
     overflow-y: auto;
 }
@@ -8618,9 +9222,13 @@ const workingCSS = `
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid #e9ecef;
+    padding: 20px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #2c3e50;
 }
 
 .close-modal {
@@ -8629,69 +9237,134 @@ const workingCSS = `
     font-size: 1.5rem;
     cursor: pointer;
     color: #7f8c8d;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-modal:hover {
+    color: #2c3e50;
 }
 
 .form-actions {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     justify-content: flex-end;
+    padding: 20px;
+    border-top: 1px solid #e0e0e0;
     margin-top: 20px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: #3498db;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #2980b9;
+}
+
+.btn-secondary {
+    background: #95a5a6;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #7f8c8d;
+}
+
+.form-group {
+    margin-bottom: 20px;
+    padding: 0 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #3498db;
 }
 `;
 
 // Add CSS to document
-const style = document.createElement('style');
-style.textContent = workingCSS;
-document.head.appendChild(style);
+const completeStyleSheet = document.createElement('style');
+completeStyleSheet.textContent = completeCSS;
+document.head.appendChild(completeStyleSheet);
 
-// Initialize the working system
-console.log('Starting Working Social Features...');
+// Initialize the complete system
+console.log('Starting Complete Social System...');
 
-// Wait for page to load
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
-            window.workingSocialFeatures = new WorkingSocialFeatures();
-            window.workingSocialFeatures.init();
-            console.log('Working Social Features INITIALIZED!');
+            window.completeSocialSystem = new CompleteSocialSystem();
+            window.completeSocialSystem.init();
+            console.log('Complete Social System INITIALIZED!');
         }, 1000);
     });
 } else {
     setTimeout(() => {
-        window.workingSocialFeatures = new WorkingSocialFeatures();
-        window.workingSocialFeatures.init();
-        console.log('Working Social Features INITIALIZED!');
+        window.completeSocialSystem = new CompleteSocialSystem();
+        window.completeSocialSystem.init();
+        console.log('Complete Social System INITIALIZED!');
     }, 1000);
 }
 
-// Test function to create sample data
-window.createTestPost = async function() {
+// Test function
+window.testCompleteSystem = async function() {
     if (!auth.currentUser) {
         showNotification('Please sign in first', 'error');
         return;
     }
     
     try {
+        const userDoc = await db.collection('users').doc(auth.currentUser.uid).get();
+        const userData = userDoc.exists ? userDoc.data() : {};
+        
         await db.collection('posts').add({
-            title: 'Test Post - Please Like and Comment!',
-            content: 'This is a test post to check if likes and comments are working. Please try liking this post and adding a comment!',
+            title: 'Test Post with Real User Data',
+            content: 'This post shows real user information from signup! You can see my department, name, and other details. Try commenting and replying!',
             authorId: auth.currentUser.uid,
-            authorName: 'Test User',
+            authorName: userData.fullName || 'Test User',
+            authorDepartment: userData.department || 'Information Systems',
             likesCount: 0,
             dislikesCount: 0,
             commentsCount: 0,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-        showNotification('Test post created!', 'success');
+        showNotification('Test post created with real user data!', 'success');
     } catch (error) {
         console.error('Error creating test post:', error);
     }
 };
 
-console.log('ULTIMATE FIX loaded! Refresh the page and everything should work!');
-       
-       
-       
+console.log('COMPLETE SYSTEM LOADED! Features: Real User Profiles + Facebook-style Comments & Replies');
 
        
        
