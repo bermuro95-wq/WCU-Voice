@@ -7829,7 +7829,593 @@ console.log('WORKING user profile system loaded! This will definitely work!');
        
        
        
-       
+// ===============================
+// FIXED: Real-time Likes, Dislikes & Comments Display
+// Paste this ENTIRE block at the end of your existing code
+// ===============================
+
+// Fix the SocialFeatures class with working real-time listeners
+class FixedSocialFeatures {
+    constructor() {
+        this.currentUser = null;
+        this.postsListener = null;
+        this.userReactionsListener = null;
+        this.userReactions = new Map(); // Track user's reactions
+    }
+
+    init() {
+        console.log('FixedSocialFeatures initializing...');
+        
+        auth.onAuthStateChanged(user => {
+            this.currentUser = user;
+            if (user) {
+                this.setupRealTimeListeners();
+                this.setupUserReactionsListener();
+            } else {
+                this.cleanupListeners();
+            }
+        });
+        
+        this.setupEventListeners();
+    }
+
+    setupUserReactionsListener() {
+        if (!this.currentUser) return;
+        
+        // Listen for this user's reactions
+        this.userReactionsListener = db.collection('reactions')
+            .where('userId', '==', this.currentUser.uid)
+            .onSnapshot(snapshot => {
+                this.userReactions.clear();
+                
+                snapshot.docs.forEach(doc => {
+                    const reaction = doc.data();
+                    const key = `${reaction.targetType}_${reaction.targetId}`;
+                    this.userReactions.set(key, reaction.type);
+                });
+                
+                // Update UI for all posts and comments
+                this.updateAllReactionButtons();
+            }, error => {
+                console.error('User reactions listener error:', error);
+            });
+    }
+
+    updateAllReactionButtons() {
+        // Update post reaction buttons
+        document.querySelectorAll('.like-btn, .dislike-btn').forEach(btn => {
+            const targetType = btn.dataset.targetType;
+            const targetId = btn.dataset.targetId;
+            const isLikeBtn = btn.classList.contains('like-btn');
+            
+            if (targetType && targetId) {
+                const key = `${targetType}_${targetId}`;
+                const userReaction = this.userReactions.get(key);
+                
+                // Remove all active classes first
+                btn.classList.remove('active');
+                
+                // Add active class if this is the user's reaction
+                if (userReaction) {
+                    if (isLikeBtn && userReaction === 'like') {
+                        btn.classList.add('active');
+                    } else if (!isLikeBtn && userReaction === 'dislike') {
+                        btn.classList.add('active');
+                    }
+                }
+            }
+        });
+    }
+
+    setupRealTimeListeners() {
+        // Listen for posts with proper error handling
+        this.postsListener = db.collection('posts')
+            .orderBy('createdAt', 'desc')
+            .limit(20)
+            .onSnapshot(snapshot => {
+                this.renderPosts(snapshot.docs);
+                this.updateAllReactionButtons(); // Update buttons after rendering
+            }, error => {
+                console.error('Posts listener error:', error);
+                showNotification('Error loading posts', 'error');
+            });
+
+        // Listen for comments count updates
+        db.collection('posts').onSnapshot(snapshot => {
+            snapshot.docChanges().forEach(change => {
+                if (change.type === 'modified') {
+                    this.updatePostStats(change.doc.id, change.doc.data());
+                }
+            });
+        });
+    }
+
+    renderPosts(postDocs) {
+        const postsContainer = document.getElementById('postsContainer');
+        if (!postsContainer) return;
+        
+        postsContainer.innerHTML = '';
+        
+        postDocs.forEach(doc => {
+            const post = doc.data();
+            const postElement = this.createPostElement(post, doc.id);
+            postsContainer.appendChild(postElement);
+        });
+    }
+
+    createPostElement(post, postId) {
+        const postElement = document.createElement('div');
+        postElement.className = 'post-card';
+        postElement.innerHTML = `
+            <div class="post-header">
+                <div class="post-author">
+                    <div class="avatar">${post.authorName ? post.authorName.charAt(0).toUpperCase() : 'U'}</div>
+                    <div>
+                        <div class="author-name">${post.authorName || 'User'}</div>
+                        <div class="post-time">${this.formatTime(post.createdAt)}</div>
+                    </div>
+                </div>
+            </div>
+            <h3 class="post-title">${post.title || 'No Title'}</h3>
+            <div class="post-content">${post.content || ''}</div>
+            ${post.imageUrl ? `<div class="post-image"><img src="${post.imageUrl}" alt="Post image" style="max-width: 100%; border-radius: 8px; margin: 10px 0;"></div>` : ''}
+            
+            <div class="post-stats">
+                <span class="likes-count">${post.likesCount || 0} likes</span>
+                <span class="dislikes-count">${post.dislikesCount || 0} dislikes</span>
+                <span class="comments-count">${post.commentsCount || 0} comments</span>
+            </div>
+            
+            <div class="post-actions">
+                <button class="action-btn like-btn" data-target-type="post" data-target-id="${postId}">
+                    <i class="fas fa-thumbs-up"></i> Like
+                </button>
+                <button class="action-btn dislike-btn" data-target-type="post" data-target-id="${postId}">
+                    <i class="fas fa-thumbs-down"></i> Dislike
+                </button>
+                <button class="action-btn comment-btn" data-post-id="${postId}">
+                    <i class="fas fa-comment"></i> Comment
+                </button>
+            </div>
+            
+            <div class="comments-section hidden" id="comments-${postId}">
+                <div class="comment-form">
+                    <textarea class="comment-input" placeholder="Write a comment..." rows="2" id="comment-input-${postId}"></textarea>
+                    <button class="btn btn-primary post-comment" data-post-id="${postId}">Post Comment</button>
+                </div>
+                <div class="comments-list" id="comments-list-${postId}">
+                    <div class="loading-comments">Loading comments...</div>
+                </div>
+            </div>
+        `;
+        
+        this.attachPostEventListeners(postElement, postId);
+        return postElement;
+    }
+
+    attachPostEventListeners(postElement, postId) {
+        // Like/Dislike buttons
+        postElement.querySelectorAll('.like-btn, .dislike-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.handleReaction(e.target.closest('button'));
+            });
+        });
+        
+        // Comment button
+        const commentBtn = postElement.querySelector('.comment-btn');
+        if (commentBtn) {
+            commentBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleCommentsSection(postId);
+            });
+        }
+        
+        // Post comment button
+        const postCommentBtn = postElement.querySelector('.post-comment');
+        if (postCommentBtn) {
+            postCommentBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.postComment(postId);
+            });
+        }
+    }
+
+    async handleReaction(button) {
+        if (!this.currentUser) {
+            showNotification('Please log in to react', 'error');
+            showPage('login');
+            return;
+        }
+        
+        const targetType = button.dataset.targetType;
+        const targetId = button.dataset.targetId;
+        const isLike = button.classList.contains('like-btn');
+        const reactionType = isLike ? 'like' : 'dislike';
+        
+        try {
+            // Check if user already reacted to this target
+            const existingReactionQuery = await db.collection('reactions')
+                .where('userId', '==', this.currentUser.uid)
+                .where('targetType', '==', targetType)
+                .where('targetId', '==', targetId)
+                .get();
+            
+            if (!existingReactionQuery.empty) {
+                // User already reacted - update or remove
+                const existingReaction = existingReactionQuery.docs[0];
+                const existingData = existingReaction.data();
+                
+                if (existingData.type === reactionType) {
+                    // Remove reaction if same type clicked again
+                    await existingReaction.ref.delete();
+                    showNotification('Reaction removed', 'success');
+                } else {
+                    // Update reaction if different type
+                    await existingReaction.ref.update({ 
+                        type: reactionType,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    showNotification(`Reaction updated to ${reactionType}`, 'success');
+                }
+            } else {
+                // Create new reaction
+                await db.collection('reactions').add({
+                    targetType: targetType,
+                    targetId: targetId,
+                    userId: this.currentUser.uid,
+                    userName: this.currentUser.displayName || 'User',
+                    type: reactionType,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                showNotification(`${reactionType.charAt(0).toUpperCase() + reactionType.slice(1)} added!`, 'success');
+            }
+        } catch (error) {
+            console.error('Error updating reaction:', error);
+            showNotification('Error updating reaction: ' + error.message, 'error');
+        }
+    }
+
+    async toggleCommentsSection(postId) {
+        const commentsSection = document.getElementById(`comments-${postId}`);
+        const commentsList = document.getElementById(`comments-list-${postId}`);
+        
+        if (!commentsSection || !commentsList) return;
+        
+        if (commentsSection.classList.contains('hidden')) {
+            commentsSection.classList.remove('hidden');
+            await this.loadComments(postId, commentsList);
+            
+            // Set up real-time listener for comments
+            this.setupCommentsListener(postId, commentsList);
+        } else {
+            commentsSection.classList.add('hidden');
+        }
+    }
+
+    async loadComments(postId, commentsList) {
+        try {
+            const comments = await db.collection('comments')
+                .where('postId', '==', postId)
+                .where('parentCommentId', '==', null)
+                .orderBy('createdAt', 'asc')
+                .get();
+            
+            if (comments.empty) {
+                commentsList.innerHTML = '<div class="empty-comments">No comments yet. Be the first to comment!</div>';
+                return;
+            }
+            
+            commentsList.innerHTML = '';
+            comments.docs.forEach(doc => {
+                const commentElement = this.createCommentElement(doc.data(), doc.id);
+                commentsList.appendChild(commentElement);
+            });
+        } catch (error) {
+            console.error('Error loading comments:', error);
+            commentsList.innerHTML = '<div class="error-comments">Error loading comments</div>';
+        }
+    }
+
+    setupCommentsListener(postId, commentsList) {
+        return db.collection('comments')
+            .where('postId', '==', postId)
+            .where('parentCommentId', '==', null)
+            .orderBy('createdAt', 'asc')
+            .onSnapshot(snapshot => {
+                commentsList.innerHTML = '';
+                
+                if (snapshot.empty) {
+                    commentsList.innerHTML = '<div class="empty-comments">No comments yet. Be the first to comment!</div>';
+                    return;
+                }
+                
+                snapshot.docs.forEach(doc => {
+                    const commentElement = this.createCommentElement(doc.data(), doc.id);
+                    commentsList.appendChild(commentElement);
+                });
+            }, error => {
+                console.error('Comments listener error:', error);
+                commentsList.innerHTML = '<div class="error-comments">Error loading comments</div>';
+            });
+    }
+
+    createCommentElement(comment, commentId) {
+        const commentElement = document.createElement('div');
+        commentElement.className = 'comment';
+        commentElement.innerHTML = `
+            <div class="comment-header">
+                <div class="comment-author">
+                    <div class="avatar small">${comment.authorName ? comment.authorName.charAt(0).toUpperCase() : 'U'}</div>
+                    <span class="author-name">${comment.authorName || 'User'}</span>
+                    <span class="comment-time">${this.formatTime(comment.createdAt)}</span>
+                </div>
+            </div>
+            <div class="comment-content">${comment.content || ''}</div>
+            <div class="comment-stats">
+                <span class="likes-count">${comment.likesCount || 0} likes</span>
+                <span class="dislikes-count">${comment.dislikesCount || 0} dislikes</span>
+            </div>
+            <div class="comment-actions">
+                <button class="action-btn like-btn" data-target-type="comment" data-target-id="${commentId}">
+                    <i class="fas fa-thumbs-up"></i> Like
+                </button>
+                <button class="action-btn dislike-btn" data-target-type="comment" data-target-id="${commentId}">
+                    <i class="fas fa-thumbs-down"></i> Dislike
+                </button>
+            </div>
+        `;
+        
+        this.attachCommentEventListeners(commentElement, commentId);
+        return commentElement;
+    }
+
+    attachCommentEventListeners(commentElement, commentId) {
+        commentElement.querySelectorAll('.like-btn, .dislike-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.handleReaction(e.target.closest('button'));
+            });
+        });
+    }
+
+    async postComment(postId) {
+        if (!this.currentUser) {
+            showNotification('Please log in to comment', 'error');
+            showPage('login');
+            return;
+        }
+        
+        const commentInput = document.getElementById(`comment-input-${postId}`);
+        if (!commentInput) return;
+        
+        const content = commentInput.value.trim();
+        if (!content) {
+            showNotification('Please enter a comment', 'error');
+            return;
+        }
+        
+        try {
+            // Get user data
+            let userName = 'User';
+            try {
+                const userDoc = await db.collection('users').doc(this.currentUser.uid).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    userName = userData.fullName || userData.displayName || 'User';
+                }
+            } catch (error) {
+                console.log('Using default username');
+            }
+            
+            await db.collection('comments').add({
+                postId: postId,
+                content: content,
+                authorId: this.currentUser.uid,
+                authorName: userName,
+                parentCommentId: null,
+                likesCount: 0,
+                dislikesCount: 0,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            commentInput.value = '';
+            showNotification('Comment posted successfully!', 'success');
+            
+        } catch (error) {
+            console.error('Error posting comment:', error);
+            showNotification('Error posting comment: ' + error.message, 'error');
+        }
+    }
+
+    updatePostStats(postId, postData) {
+        const postElement = document.querySelector(`[data-post-id="${postId}"]`);
+        if (!postElement) return;
+        
+        const likesCount = postElement.querySelector('.likes-count');
+        const dislikesCount = postElement.querySelector('.dislikes-count');
+        const commentsCount = postElement.querySelector('.comments-count');
+        
+        if (likesCount) likesCount.textContent = `${postData.likesCount || 0} likes`;
+        if (dislikesCount) dislikesCount.textContent = `${postData.dislikesCount || 0} dislikes`;
+        if (commentsCount) commentsCount.textContent = `${postData.commentsCount || 0} comments`;
+    }
+
+    formatTime(timestamp) {
+        if (!timestamp) return 'Recently';
+        try {
+            const date = timestamp.toDate();
+            const now = new Date();
+            const diff = now - date;
+            
+            const minute = 60 * 1000;
+            const hour = minute * 60;
+            const day = hour * 24;
+            
+            if (diff < minute) return 'Just now';
+            if (diff < hour) return `${Math.floor(diff / minute)}m ago`;
+            if (diff < day) return `${Math.floor(diff / hour)}h ago`;
+            if (diff < day * 7) return `${Math.floor(diff / day)}d ago`;
+            
+            return date.toLocaleDateString();
+        } catch (error) {
+            return 'Recently';
+        }
+    }
+
+    cleanupListeners() {
+        if (this.postsListener) this.postsListener();
+        if (this.userReactionsListener) this.userReactionsListener();
+    }
+}
+
+// CSS for the fixed features
+const fixedFeaturesCSS = `
+.post-stats {
+    display: flex;
+    gap: 15px;
+    margin: 10px 0;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.comments-section {
+    margin-top: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.comment-form {
+    margin-bottom: 15px;
+}
+
+.comment-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.comment {
+    background: white;
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.comment-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.avatar.small {
+    width: 24px;
+    height: 24px;
+    font-size: 0.7rem;
+}
+
+.author-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.comment-time {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.comment-content {
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.comment-stats {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.comment-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.action-btn.active {
+    color: #3498db;
+    font-weight: bold;
+}
+
+.like-btn.active {
+    color: #1877f2;
+}
+
+.dislike-btn.active {
+    color: #ff4444;
+}
+
+.loading-comments, .empty-comments, .error-comments {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+    font-style: italic;
+}
+
+.post-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #e9ecef;
+}
+
+.action-btn {
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+    background: #e9ecef;
+}
+`;
+
+// Add CSS to document
+const fixedStyleSheet = document.createElement('style');
+fixedStyleSheet.textContent = fixedFeaturesCSS;
+document.head.appendChild(fixedStyleSheet);
+
+// Initialize the fixed system
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Initializing Fixed Social Features...');
+    
+    // Wait a bit for Firebase to initialize
+    setTimeout(() => {
+        const fixedSocialFeatures = new FixedSocialFeatures();
+        fixedSocialFeatures.init();
+        
+        // Make it globally available
+        window.fixedSocialFeatures = fixedSocialFeatures;
+        
+        console.log('Fixed Social Features initialized successfully!');
+    }, 2000);
+});
+
+// Override the existing social features initialization
+console.log('Likes, dislikes, and comments FIXED! Paste this code and refresh the page.');
        
        
        
